@@ -1,4 +1,5 @@
-﻿namespace v2rayN.Mode
+﻿
+namespace v2rayN.Mode
 {
     public enum EServerColName
     {
@@ -11,8 +12,7 @@
         network,
         streamSecurity,
         subRemarks,
-        delayVal,
-        speedVal,
+        testResult,
 
         todayDown,
         todayUp,

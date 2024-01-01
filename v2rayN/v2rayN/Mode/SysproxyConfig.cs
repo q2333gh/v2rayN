@@ -1,6 +1,7 @@
-﻿namespace v2rayN.Mode
+﻿
+namespace v2rayN.Mode
 {
-    internal class SysproxyConfig
+    class SysproxyConfig
     {
         public bool UserSettingsRecorded;
         public string Flags;

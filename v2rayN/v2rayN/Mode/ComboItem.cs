@@ -1,12 +1,11 @@
 ﻿namespace v2rayN.Mode
 {
-    public class ComboItem
+    class ComboItem
     {
-        public string ID
+        public int ID
         {
             get; set;
         }
-
         public string Text
         {
             get; set;

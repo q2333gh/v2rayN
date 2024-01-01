@@ -19,7 +19,7 @@ namespace v2rayN.Properties {
     // 类通过类似于 ResGen 或 Visual Studio 的工具自动生成的。
     // 若要添加或移除成员，请编辑 .ResX 文件，然后重新运行 ResGen
     // (以 /str 作为命令选项)，或重新生成 VS 项目。
-    [global::System.CodeDom.Compiler.GeneratedCodeAttribute("System.Resources.Tools.StronglyTypedResourceBuilder", "17.0.0.0")]
+    [global::System.CodeDom.Compiler.GeneratedCodeAttribute("System.Resources.Tools.StronglyTypedResourceBuilder", "16.0.0.0")]
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
     [global::System.Runtime.CompilerServices.CompilerGeneratedAttribute()]
     internal class Resources {
@@ -66,16 +66,6 @@ namespace v2rayN.Properties {
         internal static System.Drawing.Bitmap about {
             get {
                 object obj = ResourceManager.GetObject("about", resourceCulture);
-                return ((System.Drawing.Bitmap)(obj));
-            }
-        }
-        
-        /// <summary>
-        ///   查找 System.Drawing.Bitmap 类型的本地化资源。
-        /// </summary>
-        internal static System.Drawing.Bitmap active {
-            get {
-                object obj = ResourceManager.GetObject("active", resourceCulture);
                 return ((System.Drawing.Bitmap)(obj));
             }
         }
@@ -203,20 +193,30 @@ namespace v2rayN.Properties {
         /// <summary>
         ///   查找 System.Drawing.Bitmap 类型的本地化资源。
         /// </summary>
-        internal static System.Drawing.Bitmap speedtest {
+        internal static System.Drawing.Bitmap sub {
             get {
-                object obj = ResourceManager.GetObject("speedtest", resourceCulture);
+                object obj = ResourceManager.GetObject("sub", resourceCulture);
                 return ((System.Drawing.Bitmap)(obj));
             }
         }
         
         /// <summary>
-        ///   查找 System.Drawing.Bitmap 类型的本地化资源。
+        ///   查找 System.Byte[] 类型的本地化资源。
         /// </summary>
-        internal static System.Drawing.Bitmap sub {
+        internal static byte[] sysproxy_exe {
             get {
-                object obj = ResourceManager.GetObject("sub", resourceCulture);
-                return ((System.Drawing.Bitmap)(obj));
+                object obj = ResourceManager.GetObject("sysproxy_exe", resourceCulture);
+                return ((byte[])(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   查找 System.Byte[] 类型的本地化资源。
+        /// </summary>
+        internal static byte[] sysproxy64_exe {
+            get {
+                object obj = ResourceManager.GetObject("sysproxy64_exe", resourceCulture);
+                return ((byte[])(obj));
             }
         }
     }

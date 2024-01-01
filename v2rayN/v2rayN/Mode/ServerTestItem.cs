@@ -1,13 +1,29 @@
-﻿namespace v2rayN.Mode
+﻿using System;
+
+namespace v2rayN.Mode
 {
     [Serializable]
-    internal class ServerTestItem
+    class ServerTestItem
     {
-        public string indexId { get; set; }
-        public string address { get; set; }
-        public int port { get; set; }
-        public EConfigType configType { get; set; }
-        public bool allowTest { get; set; }
-        public int delay { get; set; }
+        public string indexId
+        {
+            get; set;
+        }
+        public string address
+        {
+            get; set;
+        }
+        public int port
+        {
+            get; set;
+        }
+        public EConfigType configType
+        {
+            get; set;
+        }
+        public bool allowTest
+        {
+            get; set;
+        }
     }
 }

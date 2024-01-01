@@ -1,4 +1,5 @@
-﻿namespace v2rayN.Mode
+﻿
+namespace v2rayN.Mode
 {
     public enum EMove
     {

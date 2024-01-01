@@ -1,4 +1,7 @@
-﻿namespace v2rayN.Mode
+﻿using System;
+using System.Collections.Generic;
+
+namespace v2rayN.Mode
 {
     [Serializable]
     public class CoreInfo
@@ -17,11 +20,10 @@
 
         public string coreDownloadUrl64 { get; set; }
 
-        public string coreDownloadUrlArm64 { get; set; }
-
         public string match { get; set; }
         public string versionArg { get; set; }
 
         public bool redirectInfo { get; set; }
+
     }
 }

@@ -1,4 +1,5 @@
-﻿using System.IO;
+﻿using System;
+using System.IO;
 using System.IO.Compression;
 using System.Text;
 
@@ -10,7 +11,8 @@ namespace v2rayN.Tool
         {
             try
             {
-                File.WriteAllBytes(fileName, content);
+                using (FileStream fs = new FileStream(fileName, FileMode.Create, FileAccess.Write))
+                    fs.Write(content, 0, content.Length);
                 return true;
             }
             catch (Exception ex)
@@ -24,9 +26,20 @@ namespace v2rayN.Tool
         {
             try
             {
-                using FileStream fs = File.Create(fileName);
-                using GZipStream input = new(new MemoryStream(content), CompressionMode.Decompress, false);
-                input.CopyTo(fs);
+                // Because the uncompressed size of the file is unknown,
+                // we are using an arbitrary buffer size.
+                byte[] buffer = new byte[4096];
+                int n;
+
+                using (FileStream fs = File.Create(fileName))
+                using (GZipStream input = new GZipStream(new MemoryStream(content),
+                        CompressionMode.Decompress, false))
+                {
+                    while ((n = input.Read(buffer, 0, buffer.Length)) > 0)
+                    {
+                        fs.Write(buffer, 0, n);
+                    }
+                }
             }
             catch (Exception ex)
             {
@@ -43,39 +56,72 @@ namespace v2rayN.Tool
         {
             try
             {
-                using FileStream fs = new(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
-                using StreamReader sr = new(fs, encoding);
-                return sr.ReadToEnd();
+                using (FileStream fs = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
+                using (StreamReader sr = new StreamReader(fs, encoding))
+                {
+                    return sr.ReadToEnd();
+                }
             }
             catch (Exception ex)
             {
                 Utils.SaveLog(ex.Message, ex);
-                throw;
+                throw ex;
             }
         }
-
-        public static bool ZipExtractToFile(string fileName, string toPath, string ignoredName)
+        public static bool ZipExtractToFile(string fileName, string ignoredName)
         {
             try
             {
-                using ZipArchive archive = ZipFile.OpenRead(fileName);
-                foreach (ZipArchiveEntry entry in archive.Entries)
+                using (ZipArchive archive = ZipFile.OpenRead(fileName))
                 {
-                    if (entry.Length == 0)
+                    foreach (ZipArchiveEntry entry in archive.Entries)
                     {
-                        continue;
-                    }
-                    try
-                    {
-                        if (!Utils.IsNullOrEmpty(ignoredName) && entry.Name.Contains(ignoredName))
+                        if (entry.Length == 0)
                         {
                             continue;
                         }
-                        entry.ExtractToFile(Path.Combine(toPath, entry.Name), true);
+                        try
+                        {
+                            if (!Utils.IsNullOrEmpty(ignoredName) && entry.Name.Contains(ignoredName))
+                            {
+                                continue;
+                            }
+                            entry.ExtractToFile(Utils.GetPath(entry.Name), true);
+                        }
+                        catch (IOException ex)
+                        {
+                            Utils.SaveLog(ex.Message, ex);
+                        }
                     }
-                    catch (IOException ex)
+                }
+                if (File.Exists(fileName))
+                {
+                    File.Delete(fileName);
+                }
+            }
+            catch (Exception ex)
+            {
+                Utils.SaveLog(ex.Message, ex);
+                return false;
+            }
+            return true;
+        }
+
+        public static bool ZipExtractToFullFile(string fileName)
+        {
+            try
+            {
+                using (ZipArchive archive = ZipFile.OpenRead(fileName))
+                {
+                    foreach (ZipArchiveEntry entry in archive.Entries)
                     {
-                        Utils.SaveLog(ex.Message, ex);
+                        if (entry.Length == 0)
+                            continue;
+
+                        string entryOuputPath = Utils.GetPath(entry.FullName);
+                        FileInfo fileInfo = new FileInfo(entryOuputPath);
+                        fileInfo.Directory.Create();
+                        entry.ExtractToFile(entryOuputPath, true);
                     }
                 }
             }

@@ -1,37 +1,36 @@
 ﻿using Microsoft.Win32;
-using Microsoft.Win32.TaskScheduler;
 using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
-using NLog;
+using System;
+using System.Collections.Generic;
 using System.Diagnostics;
-using System.Drawing;
 using System.IO;
 using System.IO.Compression;
 using System.Net;
 using System.Net.NetworkInformation;
 using System.Net.Sockets;
 using System.Reflection;
-using System.Runtime.InteropServices;
-using System.Security.Cryptography;
-using System.Security.Principal;
+using System.Runtime.Serialization.Formatters.Binary;
 using System.Text;
 using System.Text.RegularExpressions;
-using System.Web;
-using System.Windows;
-using System.Windows.Interop;
-using System.Windows.Media;
-using System.Windows.Media.Imaging;
-using v2rayN.Base;
-using v2rayN.Mode;
+using System.Windows.Forms;
+using System.Drawing;
 using ZXing;
 using ZXing.Common;
 using ZXing.QrCode;
-using ZXing.Windows.Compatibility;
+using System.Security.Principal;
+using v2rayN.Base;
+using Newtonsoft.Json.Linq;
+using System.Web;
+using log4net;
+using System.Linq;
+using System.Security.Cryptography;
+using System.Runtime.InteropServices;
 
 namespace v2rayN
 {
-    internal class Utils
+    class Utils
     {
+
         #region 资源Json操作
 
         /// <summary>
@@ -46,10 +45,34 @@ namespace v2rayN
             try
             {
                 Assembly assembly = Assembly.GetExecutingAssembly();
-                using Stream? stream = assembly.GetManifestResourceStream(res);
-                ArgumentNullException.ThrowIfNull(stream);
-                using StreamReader reader = new(stream);
-                result = reader.ReadToEnd();
+                using (Stream stream = assembly.GetManifestResourceStream(res))
+                using (StreamReader reader = new StreamReader(stream))
+                {
+                    result = reader.ReadToEnd();
+                }
+            }
+            catch (Exception ex)
+            {
+                SaveLog(ex.Message, ex);
+            }
+            return result;
+        }
+
+
+        /// <summary>
+        /// 取得存储资源
+        /// </summary>
+        /// <returns></returns>
+        public static string LoadResource(string res)
+        {
+            string result = string.Empty;
+
+            try
+            {
+                using (StreamReader reader = new StreamReader(res))
+                {
+                    result = reader.ReadToEnd();
+                }
             }
             catch (Exception ex)
             {
@@ -59,42 +82,21 @@ namespace v2rayN
         }
 
         /// <summary>
-        /// 取得存储资源
-        /// </summary>
-        /// <returns></returns>
-        public static string? LoadResource(string res)
-        {
-            try
-            {
-                if (!File.Exists(res)) return null;
-                return File.ReadAllText(res);
-            }
-            catch (Exception ex)
-            {
-                SaveLog(ex.Message, ex);
-            }
-            return null;
-        }
-
-        /// <summary>
         /// 反序列化成对象
         /// </summary>
         /// <typeparam name="T"></typeparam>
         /// <param name="strJson"></param>
         /// <returns></returns>
-        public static T? FromJson<T>(string? strJson)
+        public static T FromJson<T>(string strJson)
         {
             try
             {
-                if (string.IsNullOrEmpty(strJson))
-                {
-                    return default;
-                }
-                return JsonConvert.DeserializeObject<T>(strJson);
+                T obj = JsonConvert.DeserializeObject<T>(strJson);
+                return obj;
             }
             catch
             {
-                return default;
+                return JsonConvert.DeserializeObject<T>("");
             }
         }
 
@@ -103,25 +105,14 @@ namespace v2rayN
         /// </summary>
         /// <param name="obj"></param>
         /// <returns></returns>
-        public static string ToJson(object? obj, bool indented = true)
+        public static string ToJson(Object obj)
         {
             string result = string.Empty;
             try
             {
-                if (obj == null)
-                {
-                    return result;
-                }
-                if (indented)
-                {
-                    result = JsonConvert.SerializeObject(obj,
+                result = JsonConvert.SerializeObject(obj,
                                            Formatting.Indented,
                                            new JsonSerializerSettings { NullValueHandling = NullValueHandling.Ignore });
-                }
-                else
-                {
-                    result = JsonConvert.SerializeObject(obj, new JsonSerializerSettings { NullValueHandling = NullValueHandling.Ignore });
-                }
             }
             catch (Exception ex)
             {
@@ -136,23 +127,25 @@ namespace v2rayN
         /// <param name="obj"></param>
         /// <param name="filePath"></param>
         /// <returns></returns>
-        public static int ToJsonFile(object? obj, string filePath, bool nullValue = true)
+        public static int ToJsonFile(Object obj, string filePath, bool nullValue = true)
         {
             int result;
             try
             {
-                using StreamWriter file = File.CreateText(filePath);
-                JsonSerializer serializer;
-                if (nullValue)
+                using (StreamWriter file = File.CreateText(filePath))
                 {
-                    serializer = new JsonSerializer() { Formatting = Formatting.Indented };
-                }
-                else
-                {
-                    serializer = new JsonSerializer() { Formatting = Formatting.Indented, NullValueHandling = NullValueHandling.Ignore };
-                }
+                    JsonSerializer serializer;
+                    if (nullValue)
+                    {
+                        serializer = new JsonSerializer() { Formatting = Formatting.Indented };
+                    }
+                    else
+                    {
+                        serializer = new JsonSerializer() { Formatting = Formatting.Indented, NullValueHandling = NullValueHandling.Ignore };
+                    }
 
-                serializer.Serialize(file, obj);
+                    serializer.Serialize(file, obj);
+                }
                 result = 0;
             }
             catch (Exception ex)
@@ -163,20 +156,21 @@ namespace v2rayN
             return result;
         }
 
-        public static JObject? ParseJson(string strJson)
+        public static JObject ParseJson(string strJson)
         {
             try
             {
-                return JObject.Parse(strJson);
+                JObject obj = JObject.Parse(strJson);
+                return obj;
             }
             catch (Exception ex)
             {
-                //SaveLog(ex.Message, ex);
+                SaveLog(ex.Message, ex);
+
                 return null;
             }
         }
-
-        #endregion 资源Json操作
+        #endregion
 
         #region 转换函数
 
@@ -195,11 +189,11 @@ namespace v2rayN
                 }
                 if (wrap)
                 {
-                    return string.Join("," + Environment.NewLine, lst);
+                    return string.Join("," + Environment.NewLine, lst.ToArray());
                 }
                 else
                 {
-                    return string.Join(",", lst);
+                    return string.Join(",", lst.ToArray());
                 }
             }
             catch (Exception ex)
@@ -208,7 +202,6 @@ namespace v2rayN
                 return string.Empty;
             }
         }
-
         /// <summary>
         /// 逗号分隔的字符串,转List<string>
         /// </summary>
@@ -219,7 +212,7 @@ namespace v2rayN
             try
             {
                 str = str.Replace(Environment.NewLine, "");
-                return new List<string>(str.Split(',', StringSplitOptions.RemoveEmptyEntries));
+                return new List<string>(str.Split(new string[] { "," }, StringSplitOptions.RemoveEmptyEntries));
             }
             catch (Exception ex)
             {
@@ -238,9 +231,8 @@ namespace v2rayN
             try
             {
                 str = str.Replace(Environment.NewLine, "");
-                List<string> list = new(str.Split(',', StringSplitOptions.RemoveEmptyEntries));
-                list.Sort();
-                return list;
+                List<string> list = new List<string>(str.Split(new string[] { "," }, StringSplitOptions.RemoveEmptyEntries));
+                return list.OrderBy(x => x).ToList();
             }
             catch (Exception ex)
             {
@@ -281,8 +273,6 @@ namespace v2rayN
                   .Replace(Environment.NewLine, "")
                   .Replace("\n", "")
                   .Replace("\r", "")
-                  .Replace('_', '/')
-                  .Replace('-', '+')
                   .Replace(" ", "");
 
                 if (plainText.Length % 4 > 0)
@@ -313,11 +303,10 @@ namespace v2rayN
             }
             catch (Exception ex)
             {
-                //SaveLog(ex.Message, ex);
+                SaveLog(ex.Message, ex);
                 return 0;
             }
         }
-
         public static bool ToBool(object obj)
         {
             try
@@ -326,7 +315,7 @@ namespace v2rayN
             }
             catch (Exception ex)
             {
-                //SaveLog(ex.Message, ex);
+                SaveLog(ex.Message, ex);
                 return false;
             }
         }
@@ -335,11 +324,11 @@ namespace v2rayN
         {
             try
             {
-                return obj?.ToString() ?? string.Empty;
+                return (obj == null ? string.Empty : obj.ToString());
             }
             catch (Exception ex)
             {
-                //SaveLog(ex.Message, ex);
+                SaveLog(ex.Message, ex);
                 return string.Empty;
             }
         }
@@ -351,38 +340,38 @@ namespace v2rayN
         /// <param name="amount">bytes</param>
         /// <param name="result">转换之后的数据</param>
         /// <param name="unit">单位</param>
-        public static void ToHumanReadable(long amount, out double result, out string unit)
+        public static void ToHumanReadable(ulong amount, out double result, out string unit)
         {
             uint factor = 1024u;
-            //long KBs = amount / factor;
-            long KBs = amount;
+            ulong KBs = amount / factor;
             if (KBs > 0)
             {
                 // multi KB
-                long MBs = KBs / factor;
+                ulong MBs = KBs / factor;
                 if (MBs > 0)
                 {
                     // multi MB
-                    long GBs = MBs / factor;
+                    ulong GBs = MBs / factor;
                     if (GBs > 0)
                     {
                         // multi GB
-                        long TBs = GBs / factor;
+                        /*ulong TBs = GBs / factor;
                         if (TBs > 0)
                         {
-                            result = TBs + ((GBs % factor) / (factor + 0.0));
+                            // 你是魔鬼吗？ 用这么多流量
+                            result = TBs + GBs % factor / (factor + 0.0);
                             unit = "TB";
                             return;
-                        }
-                        result = GBs + ((MBs % factor) / (factor + 0.0));
+                        }*/
+                        result = GBs + MBs % factor / (factor + 0.0);
                         unit = "GB";
                         return;
                     }
-                    result = MBs + ((KBs % factor) / (factor + 0.0));
+                    result = MBs + KBs % factor / (factor + 0.0);
                     unit = "MB";
                     return;
                 }
-                result = KBs + ((amount % factor) / (factor + 0.0));
+                result = KBs + amount % factor / (factor + 0.0);
                 unit = "KB";
                 return;
             }
@@ -393,18 +382,19 @@ namespace v2rayN
             }
         }
 
-        public static string HumanFy(long amount)
+        public static string HumanFy(ulong amount)
         {
             ToHumanReadable(amount, out double result, out string unit);
             return $"{string.Format("{0:f1}", result)} {unit}";
         }
+
+
 
         public static string UrlEncode(string url)
         {
             return Uri.EscapeDataString(url);
             //return  HttpUtility.UrlEncode(url);
         }
-
         public static string UrlDecode(string url)
         {
             return HttpUtility.UrlDecode(url);
@@ -412,9 +402,10 @@ namespace v2rayN
 
         public static string GetMD5(string str)
         {
+            var md5 = MD5.Create();
             byte[] byteOld = Encoding.UTF8.GetBytes(str);
-            byte[] byteNew = MD5.HashData(byteOld);
-            StringBuilder sb = new(32);
+            byte[] byteNew = md5.ComputeHash(byteOld);
+            StringBuilder sb = new StringBuilder();
             foreach (byte b in byteNew)
             {
                 sb.Append(b.ToString("x2"));
@@ -422,59 +413,8 @@ namespace v2rayN
             return sb.ToString();
         }
 
-        public static ImageSource IconToImageSource(Icon icon)
-        {
-            return Imaging.CreateBitmapSourceFromHIcon(
-                icon.Handle,
-                new System.Windows.Int32Rect(0, 0, icon.Width, icon.Height),
-                BitmapSizeOptions.FromEmptyOptions());
-        }
+        #endregion
 
-        /// <summary>
-        /// idn to idc
-        /// </summary>
-        /// <param name="url"></param>
-        /// <returns></returns>
-        public static string GetPunycode(string url)
-        {
-            if (string.IsNullOrWhiteSpace(url))
-            {
-                return url;
-            }
-            try
-            {
-                Uri uri = new(url);
-                if (uri.Host == uri.IdnHost)
-                {
-                    return url;
-                }
-                else
-                {
-                    return url.Replace(uri.Host, uri.IdnHost);
-                }
-            }
-            catch
-            {
-                return url;
-            }
-        }
-
-        public static bool IsBase64String(string plainText)
-        {
-            var buffer = new Span<byte>(new byte[plainText.Length]);
-            return Convert.TryFromBase64String(plainText, buffer, out int _);
-        }
-
-        public static string Convert2Comma(string text)
-        {
-            if (string.IsNullOrWhiteSpace(text))
-            {
-                return text;
-            }
-            return text.Replace("，", ",").Replace(Environment.NewLine, ",");
-        }
-
-        #endregion 转换函数
 
         #region 数据检查
 
@@ -502,13 +442,13 @@ namespace v2rayN
         /// </summary>
         /// <param name="text"></param>
         /// <returns></returns>
-        public static bool IsNullOrEmpty(string? text)
+        public static bool IsNullOrEmpty(string text)
         {
             if (string.IsNullOrEmpty(text))
             {
                 return true;
             }
-            if (text == "null")
+            if (text.Equals("null"))
             {
                 return true;
             }
@@ -518,7 +458,7 @@ namespace v2rayN
         /// <summary>
         /// 验证IP地址是否合法
         /// </summary>
-        /// <param name="ip"></param>
+        /// <param name="ip"></param>        
         public static bool IsIP(string ip)
         {
             //如果为空
@@ -543,6 +483,7 @@ namespace v2rayN
                 }
             }
 
+
             //模式字符串
             string pattern = @"^((2[0-4]\d|25[0-5]|[01]?\d\d?)\.){3}(2[0-4]\d|25[0-5]|[01]?\d\d?)$";
 
@@ -553,7 +494,7 @@ namespace v2rayN
         /// <summary>
         /// 验证Domain地址是否合法
         /// </summary>
-        /// <param name="domain"></param>
+        /// <param name="domain"></param>        
         public static bool IsDomain(string domain)
         {
             //如果为空
@@ -562,14 +503,21 @@ namespace v2rayN
                 return false;
             }
 
-            return Uri.CheckHostName(domain) == UriHostNameType.Dns;
+            //清除要验证字符串中的空格
+            //domain = domain.TrimEx();
+
+            //模式字符串
+            string pattern = @"^(?=^.{3,255}$)[a-zA-Z0-9][-a-zA-Z0-9]{0,62}(\.[a-zA-Z0-9][-a-zA-Z0-9]{0,62})+$";
+
+            //验证
+            return IsMatch(domain, pattern);
         }
 
         /// <summary>
         /// 验证输入字符串是否与模式字符串匹配，匹配返回true
         /// </summary>
         /// <param name="input">输入字符串</param>
-        /// <param name="pattern">模式字符串</param>
+        /// <param name="pattern">模式字符串</param>        
         public static bool IsMatch(string input, string pattern)
         {
             return Regex.IsMatch(input, pattern, RegexOptions.IgnoreCase);
@@ -577,21 +525,48 @@ namespace v2rayN
 
         public static bool IsIpv6(string ip)
         {
-            if (IPAddress.TryParse(ip, out IPAddress? address))
+            IPAddress address;
+            if (IPAddress.TryParse(ip, out address))
             {
-                return address.AddressFamily switch
+                switch (address.AddressFamily)
                 {
-                    AddressFamily.InterNetwork => false,
-                    AddressFamily.InterNetworkV6 => true,
-                    _ => false,
-                };
+                    case AddressFamily.InterNetwork:
+                        return false;
+                    case AddressFamily.InterNetworkV6:
+                        return true;
+                    default:
+                        return false;
+                }
             }
             return false;
         }
 
-        #endregion 数据检查
+        #endregion
 
         #region 开机自动启动
+
+        private static string autoRunName
+        {
+            get
+            {
+                return $"v2rayNAutoRun_{GetMD5(StartupPath())}";
+            }
+        }
+        private static string autoRunRegPath
+        {
+            get
+            {
+                return @"Software\Microsoft\Windows\CurrentVersion\Run";
+                //if (Environment.Is64BitProcess)
+                //{
+                //    return @"Software\Microsoft\Windows\CurrentVersion\Run";
+                //}
+                //else
+                //{
+                //    return @"SOFTWARE\Wow6432Node\Microsoft\Windows\CurrentVersion\Run";
+                //}
+            }
+        }
 
         /// <summary>
         /// 开机自动启动
@@ -602,27 +577,8 @@ namespace v2rayN
         {
             try
             {
-                var autoRunName = $"{Global.AutoRunName}_{GetMD5(StartupPath())}";
-
-                //delete first
-                RegWriteValue(Global.AutoRunRegPath, autoRunName, "");
-                if (IsAdministrator())
-                {
-                    AutoStart(autoRunName, "", "");
-                }
-
-                if (run)
-                {
-                    string exePath = $"\"{GetExePath()}\"";
-                    if (IsAdministrator())
-                    {
-                        AutoStart(autoRunName, exePath, "");
-                    }
-                    else
-                    {
-                        RegWriteValue(Global.AutoRunRegPath, autoRunName, exePath);
-                    }
-                }
+                string exePath = GetExePath();
+                RegWriteValue(autoRunRegPath, autoRunName, run ? $"\"{exePath}\"" : "");
             }
             catch (Exception ex)
             {
@@ -639,14 +595,14 @@ namespace v2rayN
             try
             {
                 //clear
-                if (!RegReadValue(Global.AutoRunRegPath, Global.AutoRunName, "").IsNullOrEmpty())
+                if (!RegReadValue(autoRunRegPath, "v2rayNAutoRun", "").IsNullOrEmpty())
                 {
-                    RegWriteValue(Global.AutoRunRegPath, Global.AutoRunName, "");
+                    RegWriteValue(autoRunRegPath, "v2rayNAutoRun", "");
                 }
 
-                string value = RegReadValue(Global.AutoRunRegPath, Global.AutoRunName, "");
+                string value = RegReadValue(autoRunRegPath, autoRunName, "");
                 string exePath = GetExePath();
-                if (value == exePath || value == $"\"{exePath}\"")
+                if (value?.Equals(exePath) == true || value?.Equals($"\"{exePath}\"") == true)
                 {
                     return true;
                 }
@@ -678,21 +634,21 @@ namespace v2rayN
         /// <returns></returns>
         public static string GetExePath()
         {
-            return Environment.ProcessPath;
+            return Application.ExecutablePath;
         }
 
         public static string StartupPath()
         {
-            return AppDomain.CurrentDomain.BaseDirectory;
+            return Application.StartupPath;
         }
 
-        public static string? RegReadValue(string path, string name, string def)
+        public static string RegReadValue(string path, string name, string def)
         {
-            RegistryKey? regKey = null;
+            RegistryKey regKey = null;
             try
             {
                 regKey = Registry.CurrentUser.OpenSubKey(path, false);
-                string? value = regKey?.GetValue(name) as string;
+                string value = regKey?.GetValue(name) as string;
                 if (IsNullOrEmpty(value))
                 {
                     return def;
@@ -715,7 +671,7 @@ namespace v2rayN
 
         public static void RegWriteValue(string path, string name, object value)
         {
-            RegistryKey? regKey = null;
+            RegistryKey regKey = null;
             try
             {
                 regKey = Registry.CurrentUser.CreateSubKey(path);
@@ -747,83 +703,86 @@ namespace v2rayN
         public static bool CheckForDotNetVersion(int release = 528040)
         {
             const string subkey = @"SOFTWARE\Microsoft\NET Framework Setup\NDP\v4\Full\";
-            using RegistryKey? ndpKey = RegistryKey.OpenBaseKey(RegistryHive.LocalMachine, RegistryView.Registry32).OpenSubKey(subkey);
-            if (ndpKey?.GetValue("Release") != null)
+            using (RegistryKey ndpKey = RegistryKey.OpenBaseKey(RegistryHive.LocalMachine, RegistryView.Registry32).OpenSubKey(subkey))
             {
-                return (int)ndpKey.GetValue("Release") >= release;
+                if (ndpKey != null && ndpKey.GetValue("Release") != null)
+                {
+                    return (int)ndpKey.GetValue("Release") >= release ? true : false;
+                }
+                return false;
             }
-            return false;
         }
 
-        /// <summary>
-        /// Auto Start via TaskService
-        /// </summary>
-        /// <param name="taskName"></param>
-        /// <param name="fileName"></param>
-        /// <param name="description"></param>
-        /// <exception cref="ArgumentNullException"></exception>
-        public static void AutoStart(string taskName, string fileName, string description)
+        public static string MainMsgFilterKey
         {
-            if (string.IsNullOrEmpty(taskName))
+            get
             {
-                return;
+                return $"MainMsgFilter_{GetMD5(StartupPath())}";
             }
-            string TaskName = taskName;
-            var logonUser = WindowsIdentity.GetCurrent().Name;
-            string taskDescription = description;
-            string deamonFileName = fileName;
-
-            using var taskService = new TaskService();
-            var tasks = taskService.RootFolder.GetTasks(new Regex(TaskName));
-            foreach (var t in tasks)
-            {
-                taskService.RootFolder.DeleteTask(t.Name);
-            }
-            if (string.IsNullOrEmpty(fileName))
-            {
-                return;
-            }
-
-            var task = taskService.NewTask();
-            task.RegistrationInfo.Description = taskDescription;
-            task.Settings.DisallowStartIfOnBatteries = false;
-            task.Settings.StopIfGoingOnBatteries = false;
-            task.Settings.RunOnlyIfIdle = false;
-            task.Settings.IdleSettings.StopOnIdleEnd = false;
-            task.Settings.ExecutionTimeLimit = TimeSpan.Zero;
-            task.Triggers.Add(new LogonTrigger { UserId = logonUser, Delay = TimeSpan.FromSeconds(10) });
-            task.Principal.RunLevel = TaskRunLevel.Highest;
-            task.Actions.Add(new ExecAction(deamonFileName));
-
-            taskService.RootFolder.RegisterTaskDefinition(TaskName, task);
         }
-
-        #endregion 开机自动启动
+        #endregion
 
         #region 测速
+
+        /// <summary>
+        /// Ping
+        /// </summary>
+        /// <param name="host"></param>
+        /// <returns></returns>
+        public static long Ping(string host)
+        {
+            long roundtripTime = -1;
+            try
+            {
+                int timeout = 30;
+                int echoNum = 2;
+                Ping pingSender = new Ping();
+                for (int i = 0; i < echoNum; i++)
+                {
+                    PingReply reply = pingSender.Send(host, timeout);
+                    if (reply.Status == IPStatus.Success)
+                    {
+                        if (reply.RoundtripTime < 0)
+                        {
+                            continue;
+                        }
+                        if (roundtripTime < 0 || reply.RoundtripTime < roundtripTime)
+                        {
+                            roundtripTime = reply.RoundtripTime;
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                SaveLog(ex.Message, ex);
+                return -1;
+            }
+            return roundtripTime;
+        }
 
         /// <summary>
         /// 取得本机 IP Address
         /// </summary>
         /// <returns></returns>
-        //public static List<string> GetHostIPAddress()
-        //{
-        //    List<string> lstIPAddress = new List<string>();
-        //    try
-        //    {
-        //        IPHostEntry IpEntry = Dns.GetHostEntry(Dns.GetHostName());
-        //        foreach (IPAddress ipa in IpEntry.AddressList)
-        //        {
-        //            if (ipa.AddressFamily == AddressFamily.InterNetwork)
-        //                lstIPAddress.Add(ipa.ToString());
-        //        }
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        SaveLog(ex.Message, ex);
-        //    }
-        //    return lstIPAddress;
-        //}
+        public static List<string> GetHostIPAddress()
+        {
+            List<string> lstIPAddress = new List<string>();
+            try
+            {
+                IPHostEntry IpEntry = Dns.GetHostEntry(Dns.GetHostName());
+                foreach (IPAddress ipa in IpEntry.AddressList)
+                {
+                    if (ipa.AddressFamily == AddressFamily.InterNetwork)
+                        lstIPAddress.Add(ipa.ToString());
+                }
+            }
+            catch (Exception ex)
+            {
+                SaveLog(ex.Message, ex);
+            }
+            return lstIPAddress;
+        }
 
         public static void SetSecurityProtocol(bool enableSecurityProtocolTls13)
         {
@@ -863,8 +822,7 @@ namespace v2rayN
             }
             return inUse;
         }
-
-        #endregion 测速
+        #endregion
 
         #region 杂项
 
@@ -897,41 +855,40 @@ namespace v2rayN
         }
 
         /// <summary>
-        /// DeepCopy
+        /// 深度拷贝
         /// </summary>
         /// <typeparam name="T"></typeparam>
         /// <param name="obj"></param>
         /// <returns></returns>
         public static T DeepCopy<T>(T obj)
         {
-            return FromJson<T>(ToJson(obj, false))!;
-
-            //            object retval;
-            //            MemoryStream ms = new();
-            //#pragma warning disable SYSLIB0011 // 类型或成员已过时
-            //            BinaryFormatter bf = new();
-            //#pragma warning restore SYSLIB0011 // 类型或成员已过时
-            //                                  //序列化成流
-            //            bf.Serialize(ms, obj);
-            //            ms.Seek(0, SeekOrigin.Begin);
-            //            //反序列化成对象
-            //            retval = bf.Deserialize(ms);
-            //            return (T)retval;
+            object retval;
+            using (MemoryStream ms = new MemoryStream())
+            {
+                BinaryFormatter bf = new BinaryFormatter();
+                //序列化成流
+                bf.Serialize(ms, obj);
+                ms.Seek(0, SeekOrigin.Begin);
+                //反序列化成对象
+                retval = bf.Deserialize(ms);
+                ms.Close();
+            }
+            return (T)retval;
         }
 
         /// <summary>
         /// 获取剪贴板数
         /// </summary>
         /// <returns></returns>
-        public static string? GetClipboardData()
+        public static string GetClipboardData()
         {
-            string? strData = string.Empty;
+            string strData = string.Empty;
             try
             {
                 IDataObject data = Clipboard.GetDataObject();
                 if (data.GetDataPresent(DataFormats.UnicodeText))
                 {
-                    strData = data.GetData(DataFormats.UnicodeText)?.ToString();
+                    strData = data.GetData(DataFormats.UnicodeText).ToString();
                 }
                 return strData;
             }
@@ -1001,6 +958,11 @@ namespace v2rayN
             }
         }
 
+        public static void AddSubItem(ListViewItem i, string name, string text)
+        {
+            i.SubItems.Add(new ListViewItem.ListViewSubItem() { Name = name, Text = text });
+        }
+
         public static string GetDownloadFileName(string url)
         {
             var fileName = Path.GetFileName(url);
@@ -1009,7 +971,7 @@ namespace v2rayN
             return fileName;
         }
 
-        public static IPAddress? GetDefaultGateway()
+        public static IPAddress GetDefaultGateway()
         {
             return NetworkInterface
                 .GetAllNetworkInterfaces()
@@ -1027,37 +989,7 @@ namespace v2rayN
         {
             return Guid.TryParse(strSrc, out Guid g);
         }
-
-        public static void ProcessStart(string fileName)
-        {
-            try
-            {
-                Process.Start(new ProcessStartInfo(fileName) { UseShellExecute = true });
-            }
-            catch (Exception ex)
-            {
-                SaveLog(ex.Message, ex);
-            }
-        }
-
-        public static void SetDarkBorder(System.Windows.Window window, bool dark)
-        {
-            // Make sure the handle is created before the window is shown
-            IntPtr hWnd = new System.Windows.Interop.WindowInteropHelper(window).EnsureHandle();
-            int attribute = dark ? 1 : 0;
-            uint attributeSize = (uint)Marshal.SizeOf(attribute);
-            DwmSetWindowAttribute(hWnd, DWMWINDOWATTRIBUTE.DWMWA_USE_IMMERSIVE_DARK_MODE_BEFORE_20H1, ref attribute, attributeSize);
-            DwmSetWindowAttribute(hWnd, DWMWINDOWATTRIBUTE.DWMWA_USE_IMMERSIVE_DARK_MODE, ref attribute, attributeSize);
-        }
-
-        public static bool IsLightTheme()
-        {
-            using var key = Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Themes\Personalize");
-            var value = key?.GetValue("AppsUseLightTheme");
-            return value is int i && i > 0;
-        }
-
-        #endregion 杂项
+        #endregion
 
         #region TempPath
 
@@ -1081,11 +1013,14 @@ namespace v2rayN
 
         public static string UnGzip(byte[] buf)
         {
-            using MemoryStream sb = new();
-            using GZipStream input = new(new MemoryStream(buf), CompressionMode.Decompress, false);
-            input.CopyTo(sb);
-            sb.Position = 0;
-            return new StreamReader(sb, Encoding.UTF8).ReadToEnd();
+            MemoryStream sb = new MemoryStream();
+            using (GZipStream input = new GZipStream(new MemoryStream(buf),
+            CompressionMode.Decompress,
+            false))
+            {
+                input.CopyTo(sb);
+            }
+            return Encoding.UTF8.GetString(sb.ToArray());
         }
 
         public static string GetBackupPath(string filename)
@@ -1097,7 +1032,6 @@ namespace v2rayN
             }
             return Path.Combine(_tempPath, filename);
         }
-
         public static string GetConfigPath(string filename = "")
         {
             string _tempPath = Path.Combine(StartupPath(), "guiConfigs");
@@ -1115,134 +1049,70 @@ namespace v2rayN
             }
         }
 
-        public static string GetBinPath(string filename, ECoreType? coreType = null)
-        {
-            string _tempPath = Path.Combine(StartupPath(), "bin");
-            if (!Directory.Exists(_tempPath))
-            {
-                Directory.CreateDirectory(_tempPath);
-            }
-            if (coreType != null)
-            {
-                _tempPath = Path.Combine(_tempPath, coreType.ToString()!);
-                if (!Directory.Exists(_tempPath))
-                {
-                    Directory.CreateDirectory(_tempPath);
-                }
-            }
-            if (string.IsNullOrEmpty(filename))
-            {
-                return _tempPath;
-            }
-            else
-            {
-                return Path.Combine(_tempPath, filename);
-            }
-        }
-
-        public static string GetLogPath(string filename = "")
-        {
-            string _tempPath = Path.Combine(StartupPath(), "guiLogs");
-            if (!Directory.Exists(_tempPath))
-            {
-                Directory.CreateDirectory(_tempPath);
-            }
-            if (string.IsNullOrEmpty(filename))
-            {
-                return _tempPath;
-            }
-            else
-            {
-                return Path.Combine(_tempPath, filename);
-            }
-        }
-
-        public static string GetFontsPath(string filename = "")
-        {
-            string _tempPath = Path.Combine(StartupPath(), "guiFonts");
-            if (!Directory.Exists(_tempPath))
-            {
-                Directory.CreateDirectory(_tempPath);
-            }
-            if (string.IsNullOrEmpty(filename))
-            {
-                return _tempPath;
-            }
-            else
-            {
-                return Path.Combine(_tempPath, filename);
-            }
-        }
-
-        #endregion TempPath
+        #endregion
 
         #region Log
 
         public static void SaveLog(string strContent)
         {
-            if (LogManager.IsLoggingEnabled())
-            {
-                var logger = LogManager.GetLogger("Log1");
-                logger.Info(strContent);
-            }
+            var logger = LogManager.GetLogger("Log1");
+            logger.Info(strContent);
         }
-
         public static void SaveLog(string strTitle, Exception ex)
         {
-            if (LogManager.IsLoggingEnabled())
-            {
-                var logger = LogManager.GetLogger("Log2");
-                logger.Debug($"{strTitle},{ex.Message}");
-                logger.Debug(ex.StackTrace);
-                if (ex?.InnerException != null)
-                {
-                    logger.Error(ex.InnerException);
-                }
-            }
+            var logger = LogManager.GetLogger("Log2");
+            logger.Debug(strTitle);
+            logger.Debug(ex);
         }
 
-        #endregion Log
+        #endregion
+
 
         #region scan screen
 
-        public static string ScanScreen(float dpiX, float dpiY)
+        public static string ScanScreen()
         {
             try
             {
-                var left = (int)(SystemParameters.WorkArea.Left);
-                var top = (int)(SystemParameters.WorkArea.Top);
-                var width = (int)(SystemParameters.WorkArea.Width / dpiX);
-                var height = (int)(SystemParameters.WorkArea.Height / dpiY);
-
-                using Bitmap fullImage = new Bitmap(width, height);
-                using (Graphics g = Graphics.FromImage(fullImage))
+                foreach (Screen screen in Screen.AllScreens)
                 {
-                    g.CopyFromScreen(left, top, 0, 0, fullImage.Size, CopyPixelOperation.SourceCopy);
-                }
-                int maxTry = 10;
-                for (int i = 0; i < maxTry; i++)
-                {
-                    int marginLeft = (int)((double)fullImage.Width * i / 2.5 / maxTry);
-                    int marginTop = (int)((double)fullImage.Height * i / 2.5 / maxTry);
-                    Rectangle cropRect = new(marginLeft, marginTop, fullImage.Width - marginLeft * 2, fullImage.Height - marginTop * 2);
-                    Bitmap target = new(width, height);
-
-                    double imageScale = (double)width / (double)cropRect.Width;
-                    using (Graphics g = Graphics.FromImage(target))
+                    using (Bitmap fullImage = new Bitmap(screen.Bounds.Width,
+                                                    screen.Bounds.Height))
                     {
-                        g.DrawImage(fullImage, new Rectangle(0, 0, target.Width, target.Height),
-                                        cropRect,
-                                        GraphicsUnit.Pixel);
-                    }
+                        using (Graphics g = Graphics.FromImage(fullImage))
+                        {
+                            g.CopyFromScreen(screen.Bounds.X,
+                                             screen.Bounds.Y,
+                                             0, 0,
+                                             fullImage.Size,
+                                             CopyPixelOperation.SourceCopy);
+                        }
+                        int maxTry = 10;
+                        for (int i = 0; i < maxTry; i++)
+                        {
+                            int marginLeft = (int)((double)fullImage.Width * i / 2.5 / maxTry);
+                            int marginTop = (int)((double)fullImage.Height * i / 2.5 / maxTry);
+                            Rectangle cropRect = new Rectangle(marginLeft, marginTop, fullImage.Width - marginLeft * 2, fullImage.Height - marginTop * 2);
+                            Bitmap target = new Bitmap(screen.Bounds.Width, screen.Bounds.Height);
 
-                    BitmapLuminanceSource source = new(target);
-                    BinaryBitmap bitmap = new(new HybridBinarizer(source));
-                    QRCodeReader reader = new();
-                    Result result = reader.decode(bitmap);
-                    if (result != null)
-                    {
-                        string ret = result.Text;
-                        return ret;
+                            double imageScale = (double)screen.Bounds.Width / (double)cropRect.Width;
+                            using (Graphics g = Graphics.FromImage(target))
+                            {
+                                g.DrawImage(fullImage, new Rectangle(0, 0, target.Width, target.Height),
+                                                cropRect,
+                                                GraphicsUnit.Pixel);
+                            }
+
+                            BitmapLuminanceSource source = new BitmapLuminanceSource(target);
+                            BinaryBitmap bitmap = new BinaryBitmap(new HybridBinarizer(source));
+                            QRCodeReader reader = new QRCodeReader();
+                            Result result = reader.decode(bitmap);
+                            if (result != null)
+                            {
+                                string ret = result.Text;
+                                return ret;
+                            }
+                        }
                     }
                 }
             }
@@ -1253,28 +1123,32 @@ namespace v2rayN
             return string.Empty;
         }
 
-        public static Tuple<float, float> GetDpiXY(Window window)
-        {
-            IntPtr hWnd = new WindowInteropHelper(window).EnsureHandle();
-            Graphics g = Graphics.FromHwnd(hWnd);
+        #endregion
 
-            return new(96 / g.DpiX, 96 / g.DpiY);
-        }
-
-        #endregion scan screen
 
         #region Windows API
 
-        [Flags]
-        public enum DWMWINDOWATTRIBUTE : uint
+        public static string WindowHwndKey
         {
-            DWMWA_USE_IMMERSIVE_DARK_MODE_BEFORE_20H1 = 19,
-            DWMWA_USE_IMMERSIVE_DARK_MODE = 20,
+            get
+            {
+                return $"WindowHwnd_{GetMD5(StartupPath())}";
+            }
         }
 
-        [DllImport("dwmapi.dll")]
-        public static extern int DwmSetWindowAttribute(IntPtr hwnd, DWMWINDOWATTRIBUTE attribute, ref int attributeValue, uint attributeSize);
+        [DllImport("user32.dll")]
+        public static extern bool SetProcessDPIAware();
 
-        #endregion Windows API
+        [DllImport("user32.dll")]
+        public static extern int ShowWindow(IntPtr hwnd, int nCmdShow);
+
+        [DllImport("user32.dll")]
+        public static extern int SwitchToThisWindow(IntPtr hwnd, bool fUnknown);
+
+        [DllImport("user32.dll")]
+        public static extern bool IsWindow(IntPtr hwnd);
+
+
+        #endregion
     }
 }
